@@ -1,16 +1,18 @@
 package org.apereo.cas.config;
 
-import com.warrenstrange.googleauth.ICredentialRepository;
-import org.apereo.cas.adaptors.gauth.JpaGoogleAuthenticatorCredentialRepository;
+import com.warrenstrange.googleauth.IGoogleAuthenticator;
+import org.apereo.cas.adaptors.gauth.JpaGoogleAuthenticatorTokenCredentialRepository;
 import org.apereo.cas.adaptors.gauth.JpaGoogleAuthenticatorTokenRepository;
 import org.apereo.cas.adaptors.gauth.repository.credentials.GoogleAuthenticatorAccount;
 import org.apereo.cas.adaptors.gauth.repository.token.GoogleAuthenticatorToken;
-import org.apereo.cas.adaptors.gauth.repository.token.GoogleAuthenticatorTokenRepository;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.jpa.JpaConfigDataHolder;
 import org.apereo.cas.configuration.support.Beans;
+import org.apereo.cas.otp.repository.credentials.OneTimeTokenCredentialRepository;
+import org.apereo.cas.otp.repository.token.OneTimeTokenRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +40,7 @@ import javax.sql.DataSource;
 @EnableScheduling
 public class GoogleAuthenticatorJpaConfiguration {
 
+
     @Autowired
     private CasConfigurationProperties casProperties;
 
@@ -50,7 +53,7 @@ public class GoogleAuthenticatorJpaConfiguration {
     @RefreshScope
     @Bean
     public DataSource dataSourceGoogleAuthenticator() {
-        return Beans.newHickariDataSource(casProperties.getAuthn().getMfa().getGauth().getJpa().getDatabase());
+        return Beans.newDataSource(casProperties.getAuthn().getMfa().getGauth().getJpa().getDatabase());
     }
 
     @Bean
@@ -63,7 +66,7 @@ public class GoogleAuthenticatorJpaConfiguration {
     @Bean
     public LocalContainerEntityManagerFactoryBean googleAuthenticatorEntityManagerFactory() {
         final LocalContainerEntityManagerFactoryBean bean =
-                Beans.newEntityManagerFactoryBean(
+                Beans.newHibernateEntityManagerFactoryBean(
                         new JpaConfigDataHolder(
                                 jpaGoogleAuthenticatorVendorAdapter(),
                                 "jpaGoogleAuthenticatorContext",
@@ -71,7 +74,6 @@ public class GoogleAuthenticatorJpaConfiguration {
                                 dataSourceGoogleAuthenticator()),
                         casProperties.getAuthn().getMfa().getGauth().getJpa().getDatabase());
 
-        bean.getJpaPropertyMap().put("hibernate.enable_lazy_load_no_trans", Boolean.TRUE);
         return bean;
     }
 
@@ -83,14 +85,18 @@ public class GoogleAuthenticatorJpaConfiguration {
         mgmr.setEntityManagerFactory(emf);
         return mgmr;
     }
-
+    
+    @Autowired
     @Bean
-    public ICredentialRepository googleAuthenticatorAccountRegistry() {
-        return new JpaGoogleAuthenticatorCredentialRepository();
+    @ConditionalOnMissingBean(name = "googleAuthenticatorAccountRegistry")
+    public OneTimeTokenCredentialRepository googleAuthenticatorAccountRegistry(@Qualifier("googleAuthenticatorInstance")
+                                                                               final IGoogleAuthenticator googleAuthenticatorInstance) {
+        return new JpaGoogleAuthenticatorTokenCredentialRepository(googleAuthenticatorInstance);
     }
 
+    @ConditionalOnMissingBean(name = "oneTimeTokenAuthenticatorTokenRepository")
     @Bean
-    public GoogleAuthenticatorTokenRepository googleAuthenticatorTokenRepository() {
+    public OneTimeTokenRepository oneTimeTokenAuthenticatorTokenRepository() {
         return new JpaGoogleAuthenticatorTokenRepository(
                 casProperties.getAuthn().getMfa().getGauth().getTimeStepSize()
         );

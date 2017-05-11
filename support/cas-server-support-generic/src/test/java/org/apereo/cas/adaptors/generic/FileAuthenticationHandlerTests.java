@@ -10,8 +10,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
-import org.pac4j.core.credentials.password.PasswordEncoder;
-import org.pac4j.core.credentials.password.SpringSecurityPasswordEncoder;
 import org.springframework.core.io.ClassPathResource;
 
 import javax.security.auth.login.AccountNotFoundException;
@@ -34,7 +32,7 @@ public class FileAuthenticationHandlerTests {
 
     @Before
     public void setUp() throws Exception {
-        this.authenticationHandler = new FileAuthenticationHandler(new ClassPathResource("authentication.txt"),
+        this.authenticationHandler = new FileAuthenticationHandler("", null, null, new ClassPathResource("authentication.txt"),
                 FileAuthenticationHandler.DEFAULT_SEPARATOR);
         final PasswordEncoderProperties p = new PasswordEncoderProperties();
         p.setType(PasswordEncoderProperties.PasswordEncoderTypes.DEFAULT.name());
@@ -116,7 +114,7 @@ public class FileAuthenticationHandlerTests {
     @Test
     public void verifyAuthenticatesUserInFileWithCommaSeparator() throws Exception {
         final UsernamePasswordCredential c = new UsernamePasswordCredential();
-        this.authenticationHandler = new FileAuthenticationHandler(new ClassPathResource("authentication2.txt"), ",");
+        this.authenticationHandler = new FileAuthenticationHandler("", null, null, new ClassPathResource("authentication2.txt"), ",");
         c.setUsername("scott");
         c.setPassword("rutgers");
         assertNotNull(this.authenticationHandler.authenticate(c));
@@ -126,7 +124,7 @@ public class FileAuthenticationHandlerTests {
     public void verifyFailsUserNotInFileWithCommaSeparator() throws Exception {
         final UsernamePasswordCredential c = new UsernamePasswordCredential();
 
-        this.authenticationHandler = new FileAuthenticationHandler(new ClassPathResource("authentication2.txt"), ",");
+        this.authenticationHandler = new FileAuthenticationHandler("", null, null, new ClassPathResource("authentication2.txt"), ",");
         c.setUsername("fds");
         c.setPassword("rutgers");
         this.thrown.expect(AccountNotFoundException.class);
@@ -137,7 +135,7 @@ public class FileAuthenticationHandlerTests {
     @Test
     public void verifyFailsGoodUsernameBadPassword() throws Exception {
         final UsernamePasswordCredential c = new UsernamePasswordCredential();
-        this.authenticationHandler = new FileAuthenticationHandler(new ClassPathResource("authentication2.txt"), ",");
+        this.authenticationHandler = new FileAuthenticationHandler("", null, null, new ClassPathResource("authentication2.txt"), ",");
 
         c.setUsername("scott");
         c.setPassword("rutgers1");
@@ -150,7 +148,7 @@ public class FileAuthenticationHandlerTests {
     @Test
     public void verifyAuthenticateNoFileName() throws Exception {
         final UsernamePasswordCredential c = new UsernamePasswordCredential();
-        this.authenticationHandler = new FileAuthenticationHandler(new ClassPathResource("fff"), FileAuthenticationHandler.DEFAULT_SEPARATOR);
+        this.authenticationHandler = new FileAuthenticationHandler("", null, null, new ClassPathResource("fff"), FileAuthenticationHandler.DEFAULT_SEPARATOR);
 
         c.setUsername("scott");
         c.setPassword("rutgers");

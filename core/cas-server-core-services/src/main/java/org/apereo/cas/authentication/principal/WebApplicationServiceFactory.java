@@ -4,6 +4,8 @@ import org.apache.commons.lang3.StringUtils;
 import org.apereo.cas.CasProtocolConstants;
 import org.apereo.cas.validation.ValidationResponseType;
 import org.apereo.cas.web.support.WebUtils;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 
@@ -15,12 +17,13 @@ import javax.servlet.http.HttpServletRequest;
  * @since 4.2
  */
 public class WebApplicationServiceFactory extends AbstractServiceFactory<WebApplicationService> {
+    private static final Logger LOGGER = LoggerFactory.getLogger(WebApplicationServiceFactory.class);
 
     @Override
     public WebApplicationService createService(final HttpServletRequest request) {
         final String serviceToUse = getRequestedService(request);
         if (StringUtils.isBlank(serviceToUse)) {
-            logger.debug("No service is specified in the request. Skipping service creation");
+            LOGGER.debug("No service is specified in the request. Skipping service creation");
             return null;
         }
         return newWebApplicationService(request, serviceToUse);
@@ -33,8 +36,8 @@ public class WebApplicationServiceFactory extends AbstractServiceFactory<WebAppl
      * @param webApplicationService the web application service
      * @return the service itself.
      */
-    private AbstractWebApplicationService determineWebApplicationFormat(final HttpServletRequest request,
-                                                                        final AbstractWebApplicationService webApplicationService) {
+    private static AbstractWebApplicationService determineWebApplicationFormat(final HttpServletRequest request,
+                                                                               final AbstractWebApplicationService webApplicationService) {
         final String format = request != null ? request.getParameter(CasProtocolConstants.PARAMETER_FORMAT) : null;
         try {
             if (StringUtils.isNotBlank(format)) {
@@ -42,7 +45,7 @@ public class WebApplicationServiceFactory extends AbstractServiceFactory<WebAppl
                 webApplicationService.setFormat(formatType);
             }
         } catch (final Exception e) {
-            logger.error("Format specified in the request [{}] is not recognized", format);
+            LOGGER.error("Format specified in the request [{}] is not recognized", format);
         }
         return webApplicationService;
     }
@@ -54,8 +57,8 @@ public class WebApplicationServiceFactory extends AbstractServiceFactory<WebAppl
      * @param serviceToUse the service to use
      * @return the simple web application service
      */
-    protected AbstractWebApplicationService newWebApplicationService(final HttpServletRequest request,
-                                                                     final String serviceToUse) {
+    protected static AbstractWebApplicationService newWebApplicationService(final HttpServletRequest request,
+                                                                            final String serviceToUse) {
         final String artifactId = request != null ? request.getParameter(CasProtocolConstants.PARAMETER_TICKET) : null;
         final String id = cleanupUrl(serviceToUse);
         final AbstractWebApplicationService newService = new SimpleWebApplicationServiceImpl(id, serviceToUse, artifactId);

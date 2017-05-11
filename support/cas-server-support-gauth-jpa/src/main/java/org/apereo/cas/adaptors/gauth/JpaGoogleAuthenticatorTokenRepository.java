@@ -1,7 +1,8 @@
 package org.apereo.cas.adaptors.gauth;
 
-import org.apereo.cas.adaptors.gauth.repository.token.BaseGoogleAuthenticatorTokenRepository;
 import org.apereo.cas.adaptors.gauth.repository.token.GoogleAuthenticatorToken;
+import org.apereo.cas.otp.repository.token.BaseOneTimeTokenRepository;
+import org.apereo.cas.otp.repository.token.OneTimeToken;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.transaction.annotation.EnableTransactionManagement;
@@ -19,8 +20,8 @@ import java.time.LocalDateTime;
  * @since 5.1.0
  */
 @EnableTransactionManagement(proxyTargetClass = true)
-@Transactional(readOnly = false, transactionManager = "transactionManagerGoogleAuthenticator")
-public class JpaGoogleAuthenticatorTokenRepository extends BaseGoogleAuthenticatorTokenRepository {
+@Transactional(transactionManager = "transactionManagerGoogleAuthenticator")
+public class JpaGoogleAuthenticatorTokenRepository extends BaseOneTimeTokenRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(JpaGoogleAuthenticatorTokenRepository.class);
 
     @PersistenceContext(unitName = "googleAuthenticatorEntityManagerFactory")
@@ -38,13 +39,14 @@ public class JpaGoogleAuthenticatorTokenRepository extends BaseGoogleAuthenticat
                 + " r where r.issuedDateTime>= :expired")
                 .setParameter("expired", LocalDateTime.now().minusSeconds(this.expireTokensInSeconds))
                 .executeUpdate();
-        LOGGER.debug("Deleted {} expired previously used token record(s)", count);
+        LOGGER.debug("Deleted [{}] expired previously used token record(s)", count);
     }
 
     @Override
-    public void store(final GoogleAuthenticatorToken token) {
+    public void store(final OneTimeToken token) {
         this.entityManager.merge(token);
     }
+    
 
     @Override
     public boolean exists(final String uid, final Integer otp) {
@@ -57,7 +59,7 @@ public class JpaGoogleAuthenticatorTokenRepository extends BaseGoogleAuthenticat
                             .getSingleResult();
             return r != null;
         } catch (final NoResultException e) {
-            LOGGER.debug("No record could be found for google authenticator id {}", uid);
+            LOGGER.debug("No record could be found for google authenticator id [{}]", uid);
         }
         return false;
     }

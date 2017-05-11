@@ -11,6 +11,7 @@ import org.apereo.cas.config.CasCoreHttpConfiguration;
 import org.apereo.cas.config.CasCoreServicesConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
 import org.apereo.cas.config.LdapAuthenticationConfiguration;
+import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
 import org.jooq.lambda.Unchecked;
 import org.junit.AfterClass;
 import org.junit.BeforeClass;
@@ -18,7 +19,6 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.junit.runner.RunWith;
-import org.ldaptive.LdapEntry;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -48,6 +48,7 @@ import static org.junit.Assert.*;
         CasCoreAuthenticationMetadataConfiguration.class,
         CasCoreAuthenticationSupportConfiguration.class,
         CasCoreAuthenticationHandlersConfiguration.class,
+        CasWebApplicationServiceFactoryConfiguration.class,
         CasCoreHttpConfiguration.class,
         CasPersonDirectoryConfiguration.class,
         CasCoreAuthenticationConfiguration.class,
@@ -65,7 +66,7 @@ public class LdapAuthenticationHandlerTests extends AbstractLdapTests {
 
     @BeforeClass
     public static void bootstrap() throws Exception {
-        LOGGER.debug("Running {}", LdapAuthenticationHandlerTests.class.getSimpleName());
+        LOGGER.debug("Running [{}]", LdapAuthenticationHandlerTests.class.getSimpleName());
         initDirectoryServer();
     }
 
@@ -77,7 +78,7 @@ public class LdapAuthenticationHandlerTests extends AbstractLdapTests {
     @Test
     public void verifyAuthenticateSuccess() throws Exception {
         assertNotEquals(handler.size(), 0);
-        this.getEntries().forEach(entry -> {
+        getEntries().forEach(entry -> {
             final String username = entry.getAttribute("sAMAccountName").getStringValue();
             final String psw = entry.getAttribute("userPassword").getStringValue();
 
@@ -100,12 +101,11 @@ public class LdapAuthenticationHandlerTests extends AbstractLdapTests {
         assertNotEquals(handler.size(), 0);
         this.thrown.expect(FailedLoginException.class);
         try {
-            for (final LdapEntry entry : this.getEntries()) {
-                final String username = entry.getAttribute("sAMAccountName").getStringValue();
-                this.handler.forEach(Unchecked.consumer(h -> {
-                    h.authenticate(new UsernamePasswordCredential(username, "badpassword"));
-                }));
-            }
+            this.getEntries().stream()
+                    .map(entry -> entry.getAttribute("sAMAccountName").getStringValue())
+                    .forEach(username -> this.handler.forEach(Unchecked.consumer(h -> {
+                        h.authenticate(new UsernamePasswordCredential(username, "badpassword"));
+                    })));
         } catch (final Exception e) {
             throw e.getCause();
         }

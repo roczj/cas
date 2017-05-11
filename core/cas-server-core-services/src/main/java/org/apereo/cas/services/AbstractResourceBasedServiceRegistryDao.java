@@ -22,9 +22,11 @@ import java.nio.file.Paths;
 import java.nio.file.Watchable;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 
 /**
  * This is {@link AbstractResourceBasedServiceRegistryDao}.
@@ -99,7 +101,7 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
 
         if (enableWatcher) {
 
-            LOGGER.info("Watching service registry directory at {}", configDirectory);
+            LOGGER.info("Watching service registry directory at [{}]", configDirectory);
 
             this.serviceRegistryConfigWatcher = new ServiceRegistryConfigWatcher(this, eventPublisher);
             this.serviceRegistryWatcherThread = new Thread(this.serviceRegistryConfigWatcher);
@@ -134,7 +136,11 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
 
     @Override
     public RegisteredService findServiceById(final String id) {
-        return this.serviceMap.values().stream().filter(r -> r.matches(id)).findFirst().orElse(null);
+        return this.serviceMap.values()
+                .stream()
+                .filter(r -> r.matches(id))
+                .findFirst()
+                .orElse(null);
     }
 
     @Override
@@ -162,13 +168,12 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
     @Override
     public synchronized List<RegisteredService> load() {
         final Map<Long, RegisteredService> temp = new ConcurrentHashMap<>();
-        final int[] errorCount = {0};
+
         final Collection<File> c = FileUtils.listFiles(this.serviceRegistryDirectory.toFile(), new String[]{getExtension()}, true);
         c.stream().filter(file -> file.length() > 0).forEach(file -> {
             final RegisteredService service = load(file);
             if (service == null) {
-                LOGGER.warn("Could not load service definition from file {}", file);
-                errorCount[0]++;
+                LOGGER.error("Could not load service definition from file [{}]", file);
             } else {
                 if (temp.containsKey(service.getId())) {
                     LOGGER.warn("Found a service definition [{}] with a duplicate id [{}]. "
@@ -180,12 +185,11 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
             }
         });
 
-        if (errorCount[0] == 0) {
-            this.serviceMap = temp;
-        } else {
-            LOGGER.warn("{} errors encountered when loading service definitions. New definitions are not loaded until errors are "
-                    + "corrected", errorCount[0]);
-        }
+        this.serviceMap = temp.entrySet()
+                .stream()
+                .sorted(Map.Entry.comparingByValue())
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue, (e1, e2) -> e1, LinkedHashMap::new));
+
         return new ArrayList(this.serviceMap.values());
     }
 
@@ -215,7 +219,7 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
             return this.registeredServiceSerializer.from(in);
         } catch (final Exception e) {
-            LOGGER.error("Error reading configuration file {}", file.getName(), e);
+            LOGGER.error("Error reading configuration file [{}]", file.getName(), e);
         }
         return null;
     }
@@ -225,7 +229,7 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
     public RegisteredService save(final RegisteredService service) {
         if (service.getId() == RegisteredService.INITIAL_IDENTIFIER_VALUE && service instanceof AbstractRegisteredService) {
             LOGGER.debug("Service id not set. Calculating id based on system time...");
-            ((AbstractRegisteredService) service).setId(System.nanoTime());
+            ((AbstractRegisteredService) service).setId(System.currentTimeMillis());
         }
         final File f = makeFile(service);
         try (LockedOutputStream out = new LockedOutputStream(new FileOutputStream(f))) {
@@ -258,7 +262,7 @@ public abstract class AbstractResourceBasedServiceRegistryDao implements Resourc
             LOGGER.debug("Using [{}] as the service definition file", svcFile.getCanonicalPath());
             return svcFile;
         } catch (final IOException e) {
-            LOGGER.warn("Service file name {} is invalid; Examine for illegal characters in the name.", fileName);
+            LOGGER.warn("Service file name [{}] is invalid; Examine for illegal characters in the name.", fileName);
             throw new IllegalArgumentException(e);
         }
     }

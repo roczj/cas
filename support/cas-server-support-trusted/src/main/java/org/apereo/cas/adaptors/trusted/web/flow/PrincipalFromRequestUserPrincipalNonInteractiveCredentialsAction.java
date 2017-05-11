@@ -16,9 +16,9 @@ import javax.servlet.http.HttpServletRequest;
 import java.security.Principal;
 
 /**
- * Implementation of the NonInteractiveCredentialsAction that looks for a user
- * principal that is set in the {@code HttpServletRequest} and attempts
- * to construct a Principal (and thus a PrincipalBearingCredential). If it
+ * Implementation of the {@link AbstractNonInteractiveCredentialsAction} that looks for a user
+ * principal that is set in the {@link HttpServletRequest} and attempts
+ * to construct a Principal (and thus a {@link PrincipalBearingCredential}). If it
  * doesn't find one, this class returns and error event which tells the web flow
  * it could not find any credentials.
  *
@@ -26,9 +26,7 @@ import java.security.Principal;
  * @since 3.0.5
  */
 public class PrincipalFromRequestUserPrincipalNonInteractiveCredentialsAction extends AbstractNonInteractiveCredentialsAction {
-
-    private final transient Logger logger = LoggerFactory.getLogger(this.getClass());
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(PrincipalFromRequestUserPrincipalNonInteractiveCredentialsAction.class);
     private final PrincipalFactory principalFactory;
 
     public PrincipalFromRequestUserPrincipalNonInteractiveCredentialsAction(
@@ -45,11 +43,11 @@ public class PrincipalFromRequestUserPrincipalNonInteractiveCredentialsAction ex
         final Principal principal = request.getUserPrincipal();
 
         if (principal != null) {
-            logger.debug("UserPrincipal [{}] found in HttpServletRequest", principal.getName());
+            LOGGER.debug("UserPrincipal [{}] found in HttpServletRequest", principal.getName());
             return new PrincipalBearingCredential(this.principalFactory.createPrincipal(principal.getName()));
         }
 
-        logger.debug("UserPrincipal not found in HttpServletRequest.");
+        LOGGER.debug("UserPrincipal not found in HttpServletRequest.");
         return null;
     }
 }

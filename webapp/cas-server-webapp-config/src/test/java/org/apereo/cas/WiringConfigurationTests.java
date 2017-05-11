@@ -7,6 +7,7 @@ import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
 import org.apereo.cas.config.CasCoreConfiguration;
 import org.apereo.cas.config.CasCoreHttpConfiguration;
@@ -18,8 +19,10 @@ import org.apereo.cas.config.CasFiltersConfiguration;
 import org.apereo.cas.config.CasMetricsConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
 import org.apereo.cas.config.CasPropertiesConfiguration;
+import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
 import org.apereo.cas.config.CasSecurityContextConfiguration;
 import org.apereo.cas.config.CasWebAppConfiguration;
+import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.logging.config.CasLoggingConfiguration;
 import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
@@ -64,8 +67,10 @@ import static org.junit.Assert.*;
                 CasCoreAuthenticationMetadataConfiguration.class,
                 CasCoreAuthenticationSupportConfiguration.class,
                 CasCoreAuthenticationHandlersConfiguration.class,
+                CasWebApplicationServiceFactoryConfiguration.class,
                 CasCoreHttpConfiguration.class,
                 CasCoreTicketsConfiguration.class,
+                CasCoreTicketCatalogConfiguration.class,
                 CasThemesConfiguration.class,
                 CasLoggingConfiguration.class,
                 CasCoreServicesConfiguration.class,
@@ -75,6 +80,7 @@ import static org.junit.Assert.*;
                 CasCoreWebConfiguration.class,
                 CasCoreValidationConfiguration.class,
                 CasCoreConfiguration.class,
+                CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
                 CasCoreAuditConfiguration.class,
                 CasPersonDirectoryConfiguration.class,
                 ThymeleafAutoConfiguration.class,

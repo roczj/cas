@@ -5,6 +5,7 @@ import org.apereo.cas.configuration.model.support.jpa.AbstractJpaProperties;
 import org.apereo.cas.configuration.model.support.mongo.AbstractMongoClientProperties;
 import org.apereo.cas.configuration.support.AbstractConfigProperties;
 import org.apereo.cas.configuration.support.Beans;
+import org.springframework.core.io.Resource;
 
 import java.io.Serializable;
 import java.util.ArrayList;
@@ -26,20 +27,70 @@ public class MultifactorAuthenticationProperties implements Serializable {
 
     private String restEndpoint;
 
+    private Resource groovyScript;
+
+    private Resource globalPrincipalAttributePredicate;
     private String globalPrincipalAttributeNameTriggers;
     private String globalPrincipalAttributeValueRegex;
+
+    private String globalAuthenticationAttributeNameTriggers;
+    private String globalAuthenticationAttributeValueRegex;
 
     private String contentType = "application/cas";
     private String globalProviderId;
 
     private String grouperGroupField;
 
+    private Resource providerSelectorGroovyScript;
+    
+    private U2F u2f = new U2F();
+    private Azure azure = new Azure();
     private Trusted trusted = new Trusted();
     private YubiKey yubikey = new YubiKey();
     private Radius radius = new Radius();
     private GAuth gauth = new GAuth();
     private List<Duo> duo = new ArrayList<>();
     private Authy authy = new Authy();
+
+    public Resource getGlobalPrincipalAttributePredicate() {
+        return globalPrincipalAttributePredicate;
+    }
+
+    public void setGlobalPrincipalAttributePredicate(final Resource globalPrincipalAttributePredicate) {
+        this.globalPrincipalAttributePredicate = globalPrincipalAttributePredicate;
+    }
+
+    public Resource getProviderSelectorGroovyScript() {
+        return providerSelectorGroovyScript;
+    }
+
+    public void setProviderSelectorGroovyScript(final Resource providerSelectorGroovyScript) {
+        this.providerSelectorGroovyScript = providerSelectorGroovyScript;
+    }
+
+    public Resource getGroovyScript() {
+        return groovyScript;
+    }
+
+    public void setGroovyScript(final Resource groovyScript) {
+        this.groovyScript = groovyScript;
+    }
+
+    public U2F getU2f() {
+        return u2f;
+    }
+
+    public void setU2f(final U2F u2f) {
+        this.u2f = u2f;
+    }
+
+    public Azure getAzure() {
+        return azure;
+    }
+
+    public void setAzure(final Azure azure) {
+        this.azure = azure;
+    }
 
     public Trusted getTrusted() {
         return trusted;
@@ -71,6 +122,22 @@ public class MultifactorAuthenticationProperties implements Serializable {
 
     public void setRequestParameter(final String requestParameter) {
         this.requestParameter = requestParameter;
+    }
+
+    public String getGlobalAuthenticationAttributeNameTriggers() {
+        return globalAuthenticationAttributeNameTriggers;
+    }
+
+    public void setGlobalAuthenticationAttributeNameTriggers(final String globalAuthenticationAttributeNameTriggers) {
+        this.globalAuthenticationAttributeNameTriggers = globalAuthenticationAttributeNameTriggers;
+    }
+
+    public String getGlobalAuthenticationAttributeValueRegex() {
+        return globalAuthenticationAttributeValueRegex;
+    }
+
+    public void setGlobalAuthenticationAttributeValueRegex(final String globalAuthenticationAttributeValueRegex) {
+        this.globalAuthenticationAttributeValueRegex = globalAuthenticationAttributeValueRegex;
     }
 
     public String getGlobalPrincipalAttributeValueRegex() {
@@ -264,6 +331,64 @@ public class MultifactorAuthenticationProperties implements Serializable {
 
             public void setAuthenticationMethodName(final String authenticationMethodName) {
                 this.authenticationMethodName = authenticationMethodName;
+            }
+        }
+    }
+
+    public static class U2F extends BaseProvider {
+        private static final long serialVersionUID = 6151350313777066398L;
+
+        private Memory memory = new Memory();
+        
+        public U2F() {
+            setId("mfa-u2f");
+        }
+
+        public Memory getMemory() {
+            return memory;
+        }
+
+        public void setMemory(final Memory memory) {
+            this.memory = memory;
+        }
+
+        public static class Memory {
+            private long expireRegistrations = 30;
+            private TimeUnit expireRegistrationsTimeUnit = TimeUnit.SECONDS;
+
+            private long expireDevices = 30;
+            private TimeUnit expireDevicesTimeUnit = TimeUnit.DAYS;
+            
+            public long getExpireRegistrations() {
+                return expireRegistrations;
+            }
+
+            public void setExpireRegistrations(final long expireRegistrations) {
+                this.expireRegistrations = expireRegistrations;
+            }
+
+            public TimeUnit getExpireRegistrationsTimeUnit() {
+                return expireRegistrationsTimeUnit;
+            }
+
+            public void setExpireRegistrationsTimeUnit(final TimeUnit expireRegistrationsTimeUnit) {
+                this.expireRegistrationsTimeUnit = expireRegistrationsTimeUnit;
+            }
+
+            public long getExpireDevices() {
+                return expireDevices;
+            }
+
+            public void setExpireDevices(final long expireDevices) {
+                this.expireDevices = expireDevices;
+            }
+
+            public TimeUnit getExpireDevicesTimeUnit() {
+                return expireDevicesTimeUnit;
+            }
+
+            public void setExpireDevicesTimeUnit(final TimeUnit expireDevicesTimeUnit) {
+                this.expireDevicesTimeUnit = expireDevicesTimeUnit;
             }
         }
     }
@@ -564,12 +689,20 @@ public class MultifactorAuthenticationProperties implements Serializable {
         private String apiUrl;
         private String phoneAttribute = "phone";
         private String mailAttribute = "mail";
+        private String countryCode = "1";
         private boolean forceVerification = true;
         private boolean trustedDeviceEnabled;
 
-
         public Authy() {
             setId("mfa-authy");
+        }
+
+        public String getCountryCode() {
+            return countryCode;
+        }
+
+        public void setCountryCode(final String countryCode) {
+            this.countryCode = countryCode;
         }
 
         public boolean isTrustedDeviceEnabled() {
@@ -786,6 +919,74 @@ public class MultifactorAuthenticationProperties implements Serializable {
         }
     }
 
+    public static class Azure extends BaseProvider {
+        private static final long serialVersionUID = 6726032660671158922L;
+
+        /**
+         * The enum Authentication modes.
+         */
+        public enum AuthenticationModes {
+            /**
+             * Ask the user to only press the pound sign.
+             */
+            POUND,
+            /**
+             * Ask the user to enter pin code shown on the screen.
+             */
+            PIN
+        }
+
+        private String phoneAttributeName = "phone";
+        private String configDir;
+        private String privateKeyPassword;
+        private AuthenticationModes mode = AuthenticationModes.POUND;
+        private boolean allowInternationalCalls;
+
+        public Azure() {
+            setId("mfa-azure");
+        }
+
+        public String getPhoneAttributeName() {
+            return phoneAttributeName;
+        }
+
+        public void setPhoneAttributeName(final String phoneAttributeName) {
+            this.phoneAttributeName = phoneAttributeName;
+        }
+
+        public AuthenticationModes getMode() {
+            return mode;
+        }
+
+        public void setMode(final AuthenticationModes mode) {
+            this.mode = mode;
+        }
+
+        public boolean isAllowInternationalCalls() {
+            return allowInternationalCalls;
+        }
+
+        public void setAllowInternationalCalls(final boolean allowInternationalCalls) {
+            this.allowInternationalCalls = allowInternationalCalls;
+        }
+
+        public String getConfigDir() {
+            return configDir;
+        }
+
+        public void setConfigDir(final String configDir) {
+            this.configDir = configDir;
+        }
+
+        public String getPrivateKeyPassword() {
+            return privateKeyPassword;
+        }
+
+        public void setPrivateKeyPassword(final String privateKeyPassword) {
+            this.privateKeyPassword = privateKeyPassword;
+        }
+    }
+
     public static class GAuth extends BaseProvider {
         private static final long serialVersionUID = -7401748853833491119L;
         private String issuer = "CASIssuer";
@@ -798,10 +999,20 @@ public class MultifactorAuthenticationProperties implements Serializable {
         private Mongodb mongodb = new Mongodb();
         private Jpa jpa = new Jpa();
         private Json json = new Json();
+        private Rest rest = new Rest();
+
         private Cleaner cleaner = new Cleaner();
-        
+
         public GAuth() {
             setId("mfa-gauth");
+        }
+
+        public Rest getRest() {
+            return rest;
+        }
+
+        public void setRest(final Rest rest) {
+            this.rest = rest;
         }
 
         public Cleaner getCleaner() {
@@ -878,10 +1089,22 @@ public class MultifactorAuthenticationProperties implements Serializable {
 
         public static class Json extends AbstractConfigProperties {
         }
-        
+
+        public static class Rest {
+            private String endpointUrl;
+
+            public String getEndpointUrl() {
+                return endpointUrl;
+            }
+
+            public void setEndpointUrl(final String endpointUrl) {
+                this.endpointUrl = endpointUrl;
+            }
+        }
+
         public static class Mongodb extends AbstractMongoClientProperties {
             private String tokenCollection;
-            
+
             public Mongodb() {
                 setCollection("MongoDbGoogleAuthenticatorRepository");
                 setTokenCollection("MongoDbGoogleAuthenticatorTokenRepository");

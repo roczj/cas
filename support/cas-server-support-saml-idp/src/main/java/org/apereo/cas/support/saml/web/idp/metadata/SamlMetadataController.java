@@ -26,9 +26,8 @@ public class SamlMetadataController {
 
     private static final String CONTENT_TYPE = "text/xml;charset=UTF-8";
 
-    private final transient Logger logger = LoggerFactory.getLogger(this.getClass());
-
-    private SamlIdpMetadataAndCertificatesGenerationService metadataAndCertificatesGenerationService;
+    private static final Logger LOGGER = LoggerFactory.getLogger(SamlMetadataController.class);
+    private final SamlIdpMetadataAndCertificatesGenerationService metadataAndCertificatesGenerationService;
 
     /**
      * Instantiates a new Saml metadata controller.
@@ -64,7 +63,7 @@ public class SamlMetadataController {
         response.setContentType(CONTENT_TYPE);
         response.setStatus(HttpServletResponse.SC_OK);
         try (PrintWriter writer = response.getWriter()) {
-            logger.debug("Producing metadata for the response");
+            LOGGER.debug("Producing metadata for the response");
             writer.write(contents);
             writer.flush();
         }

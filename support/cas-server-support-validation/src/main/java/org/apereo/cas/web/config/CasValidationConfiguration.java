@@ -24,6 +24,7 @@ import org.apereo.cas.web.view.Cas30JsonResponseView;
 import org.apereo.cas.web.view.Cas30ResponseView;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -53,11 +54,7 @@ public class CasValidationConfiguration {
     @Autowired
     @Qualifier("authenticationContextValidator")
     private AuthenticationContextValidator authenticationContextValidator;
-
-    @Autowired
-    @Qualifier("defaultAuthenticationSystemSupport")
-    private AuthenticationSystemSupport authenticationSystemSupport;
-
+    
     @Autowired
     @Qualifier("cas20WithoutProxyProtocolValidationSpecification")
     private ValidationSpecification cas20WithoutProxyProtocolValidationSpecification;
@@ -101,11 +98,7 @@ public class CasValidationConfiguration {
     @Autowired
     @Qualifier("centralAuthenticationService")
     private CentralAuthenticationService centralAuthenticationService;
-
-    @Autowired
-    @Qualifier("defaultArgumentExtractor")
-    private ArgumentExtractor argumentExtractor;
-
+    
     @Autowired
     @Qualifier("defaultMultifactorTriggerSelectionStrategy")
     private MultifactorTriggerSelectionStrategy multifactorTriggerSelectionStrategy;
@@ -123,6 +116,7 @@ public class CasValidationConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = "cas2ServiceSuccessView")
     public View cas2ServiceSuccessView() {
         return new Cas20ResponseView(true, protocolAttributeEncoder,
                 servicesManager, casProperties.getAuthn().getMfa().getAuthenticationContextAttribute(),
@@ -130,24 +124,30 @@ public class CasValidationConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = "cas3ServiceJsonView")
     public View cas3ServiceJsonView() {
         return new Cas30JsonResponseView(true, 
                 protocolAttributeEncoder,
                 servicesManager,
                 casProperties.getAuthn().getMfa().getAuthenticationContextAttribute(),
-                casProperties.getView().getCas3().isReleaseProtocolAttributes());
+                casProperties.getAuthn().isReleaseProtocolAttributes());
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = "cas3ServiceSuccessView")
     public View cas3ServiceSuccessView() {
         final String authenticationContextAttribute = casProperties.getAuthn().getMfa().getAuthenticationContextAttribute();
-        final boolean isReleaseProtocolAttributes = casProperties.getView().getCas3().isReleaseProtocolAttributes();
+        final boolean isReleaseProtocolAttributes = casProperties.getAuthn().isReleaseProtocolAttributes();
         return new Cas30ResponseView(true, protocolAttributeEncoder,
                 servicesManager, authenticationContextAttribute, cas3SuccessView, isReleaseProtocolAttributes);
     }
 
+    @Autowired
     @Bean
-    public V3ServiceValidateController v3ServiceValidateController() {
+    @ConditionalOnMissingBean(name = "v3ServiceValidateController")
+    public V3ServiceValidateController v3ServiceValidateController(@Qualifier("argumentExtractor") final ArgumentExtractor argumentExtractor,
+                                                                   @Qualifier("defaultAuthenticationSystemSupport")
+                                                                   final AuthenticationSystemSupport authenticationSystemSupport) {
         final V3ServiceValidateController c = new V3ServiceValidateController();
         c.setValidationSpecification(this.cas20WithoutProxyProtocolValidationSpecification);
         c.setSuccessView(cas3ServiceSuccessView());
@@ -164,8 +164,12 @@ public class CasValidationConfiguration {
         return c;
     }
 
+    @Autowired
     @Bean
-    public V3ProxyValidateController v3ProxyValidateController() {
+    @ConditionalOnMissingBean(name = "v3ProxyValidateController")
+    public V3ProxyValidateController v3ProxyValidateController(@Qualifier("argumentExtractor") final ArgumentExtractor argumentExtractor,
+                                                               @Qualifier("defaultAuthenticationSystemSupport")
+                                                               final AuthenticationSystemSupport authenticationSystemSupport) {
         final V3ProxyValidateController c = new V3ProxyValidateController();
         c.setValidationSpecification(cas20ProtocolValidationSpecification);
         c.setSuccessView(cas3ServiceSuccessView());
@@ -182,8 +186,12 @@ public class CasValidationConfiguration {
         return c;
     }
 
+    @Autowired
     @Bean
-    public ProxyValidateController proxyValidateController() {
+    @ConditionalOnMissingBean(name = "proxyValidateController")
+    public ProxyValidateController proxyValidateController(@Qualifier("argumentExtractor") final ArgumentExtractor argumentExtractor,
+                                                           @Qualifier("defaultAuthenticationSystemSupport")
+                                                           final AuthenticationSystemSupport authenticationSystemSupport) {
         final ProxyValidateController c = new ProxyValidateController();
         c.setValidationSpecification(cas20ProtocolValidationSpecification);
         c.setSuccessView(cas3ServiceSuccessView());
@@ -200,8 +208,12 @@ public class CasValidationConfiguration {
         return c;
     }
 
+    @Autowired
     @Bean
-    public LegacyValidateController legacyValidateController() {
+    @ConditionalOnMissingBean(name = "legacyValidateController")
+    public LegacyValidateController legacyValidateController(@Qualifier("argumentExtractor") final ArgumentExtractor argumentExtractor,
+                                                             @Qualifier("defaultAuthenticationSystemSupport")
+                                                             final AuthenticationSystemSupport authenticationSystemSupport) {
         final LegacyValidateController c = new LegacyValidateController();
         c.setValidationSpecification(this.cas10ProtocolValidationSpecification);
         c.setSuccessView(cas1ServiceSuccessView());
@@ -219,12 +231,17 @@ public class CasValidationConfiguration {
     }
 
     @Bean
+    @ConditionalOnMissingBean(name = "proxyController")
     public ProxyController proxyController() {
         return new ProxyController(centralAuthenticationService, webApplicationServiceFactory);
     }
 
+    @Autowired
     @Bean
-    public ServiceValidateController serviceValidateController() {
+    @ConditionalOnMissingBean(name = "serviceValidateController")
+    public ServiceValidateController serviceValidateController(@Qualifier("argumentExtractor") final ArgumentExtractor argumentExtractor,
+                                                               @Qualifier("defaultAuthenticationSystemSupport")
+                                                               final AuthenticationSystemSupport authenticationSystemSupport) {
         final ServiceValidateController c = new ServiceValidateController();
         c.setValidationSpecification(this.cas20WithoutProxyProtocolValidationSpecification);
         c.setSuccessView(cas2ServiceSuccessView());

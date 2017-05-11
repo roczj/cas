@@ -4,8 +4,10 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.services.web.RegisteredServiceThemeBasedViewResolver;
 import org.apereo.cas.services.web.ServiceThemeResolver;
+import org.apereo.cas.web.support.ArgumentExtractor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.thymeleaf.ThymeleafProperties;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -24,7 +26,6 @@ import org.thymeleaf.spring4.view.ThymeleafViewResolver;
 import org.thymeleaf.templatemode.TemplateMode;
 
 import java.util.Collections;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -53,8 +54,8 @@ public class CasThemesConfiguration {
     private ThymeleafViewResolver thymeleafViewResolver;
 
     @Autowired
-    @Qualifier("argumentExtractors")
-    private List argumentExtractors;
+    @Qualifier("argumentExtractor")
+    private ArgumentExtractor argumentExtractors;
 
     @Autowired
     @Qualifier("serviceThemeResolverSupportedBrowsers")
@@ -104,8 +105,9 @@ public class CasThemesConfiguration {
         return r;
     }
 
-    @Bean(name = {"serviceThemeResolver", "themeResolver"})
-    public ThemeResolver serviceThemeResolver() {
+    @ConditionalOnMissingBean(name = "themeResolver")
+    @Bean
+    public ThemeResolver themeResolver() {
         final String defaultThemeName = casProperties.getTheme().getDefaultThemeName();
         return new ServiceThemeResolver(defaultThemeName, servicesManager, serviceThemeResolverSupportedBrowsers);
     }
@@ -116,7 +118,7 @@ public class CasThemesConfiguration {
      */
     public static class CasThymeleafOutputTemplateHandler extends AbstractTemplateHandler {
         private boolean writeWhitespace;
-        
+
         public CasThymeleafOutputTemplateHandler() {
         }
 

@@ -1,6 +1,7 @@
 package org.apereo.cas.config;
 
 import com.google.common.base.Throwables;
+import org.apereo.cas.CipherExecutor;
 import org.apereo.cas.authentication.DefaultMultifactorTriggerSelectionStrategy;
 import org.apereo.cas.authentication.MultifactorTriggerSelectionStrategy;
 import org.apereo.cas.authentication.ProtocolAttributeEncoder;
@@ -8,10 +9,8 @@ import org.apereo.cas.authentication.principal.DefaultWebApplicationResponseBuil
 import org.apereo.cas.authentication.principal.PersistentIdGenerator;
 import org.apereo.cas.authentication.principal.ResponseBuilder;
 import org.apereo.cas.authentication.principal.ResponseBuilderLocator;
-import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.ShibbolethCompatiblePersistentIdGenerator;
 import org.apereo.cas.authentication.principal.WebApplicationService;
-import org.apereo.cas.authentication.principal.WebApplicationServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationServiceResponseBuilder;
 import org.apereo.cas.authentication.support.DefaultCasProtocolAttributeEncoder;
 import org.apereo.cas.authentication.support.NoOpProtocolAttributeEncoder;
@@ -19,12 +18,16 @@ import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.services.AbstractResourceBasedServiceRegistryDao;
 import org.apereo.cas.services.DefaultServicesManager;
 import org.apereo.cas.services.InMemoryServiceRegistry;
+import org.apereo.cas.services.RegisteredService;
 import org.apereo.cas.services.RegisteredServiceCipherExecutor;
+import org.apereo.cas.services.RegisteredServicesEventListener;
 import org.apereo.cas.services.ServiceRegistryDao;
 import org.apereo.cas.services.ServiceRegistryInitializer;
 import org.apereo.cas.services.ServicesManager;
 import org.apereo.cas.util.services.DefaultRegisteredServiceCipherExecutor;
 import org.apereo.cas.util.services.RegisteredServiceJsonSerializer;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -48,6 +51,7 @@ import java.util.List;
 @Configuration("casCoreServicesConfiguration")
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 public class CasCoreServicesConfiguration {
+    private static final Logger LOGGER = LoggerFactory.getLogger(CasCoreServicesConfiguration.class);
 
     private static final String BEAN_NAME_SERVICE_REGISTRY_DAO = "serviceRegistryDao";
 
@@ -55,7 +59,7 @@ public class CasCoreServicesConfiguration {
     private CasConfigurationProperties casProperties;
 
     @Autowired
-    private ApplicationContext context;
+    private ApplicationContext applicationContext;
 
     @Autowired
     private ApplicationEventPublisher eventPublisher;
@@ -75,11 +79,7 @@ public class CasCoreServicesConfiguration {
         return new ShibbolethCompatiblePersistentIdGenerator();
     }
 
-    @Bean
-    public ServiceFactory webApplicationServiceFactory() {
-        return new WebApplicationServiceFactory();
-    }
-
+    @ConditionalOnMissingBean(name = "webApplicationResponseBuilderLocator")
     @Bean
     public ResponseBuilderLocator webApplicationResponseBuilderLocator() {
         return new DefaultWebApplicationResponseBuilderLocator();
@@ -91,10 +91,13 @@ public class CasCoreServicesConfiguration {
         return new WebApplicationServiceResponseBuilder();
     }
 
+    @ConditionalOnMissingBean(name = "casAttributeEncoder")
     @RefreshScope
     @Bean
-    public ProtocolAttributeEncoder casAttributeEncoder(@Qualifier("serviceRegistryDao") final ServiceRegistryDao serviceRegistryDao) {
-        return new DefaultCasProtocolAttributeEncoder(servicesManager(serviceRegistryDao), registeredServiceCipherExecutor());
+    public ProtocolAttributeEncoder casAttributeEncoder(@Qualifier("serviceRegistryDao") final ServiceRegistryDao serviceRegistryDao,
+                                                        @Qualifier("cacheCredentialsCipherExecutor") final CipherExecutor cacheCredentialsCipherExecutor) {
+        return new DefaultCasProtocolAttributeEncoder(servicesManager(serviceRegistryDao),
+                registeredServiceCipherExecutor(), cacheCredentialsCipherExecutor);
     }
 
     @Bean
@@ -102,25 +105,38 @@ public class CasCoreServicesConfiguration {
         return new NoOpProtocolAttributeEncoder();
     }
 
+    @ConditionalOnMissingBean(name = "registeredServiceCipherExecutor")
     @Bean
+    @RefreshScope
     public RegisteredServiceCipherExecutor registeredServiceCipherExecutor() {
         return new DefaultRegisteredServiceCipherExecutor();
     }
 
+    @ConditionalOnMissingBean(name = "servicesManager")
     @Bean
+    @RefreshScope
     public ServicesManager servicesManager(@Qualifier("serviceRegistryDao") final ServiceRegistryDao serviceRegistryDao) {
         return new DefaultServicesManager(serviceRegistryDao);
     }
 
+    @Bean
+    @RefreshScope
+    public RegisteredServicesEventListener registeredServicesEventListener(@Qualifier("servicesManager") final ServicesManager servicesManager) {
+        return new RegisteredServicesEventListener(servicesManager);
+    }
+    
     @ConditionalOnMissingBean(name = BEAN_NAME_SERVICE_REGISTRY_DAO)
-    @Bean(name = {BEAN_NAME_SERVICE_REGISTRY_DAO, "inMemoryServiceRegistryDao"})
-    public ServiceRegistryDao inMemoryServiceRegistryDao() {
-        final InMemoryServiceRegistry impl = new InMemoryServiceRegistry();
-        if (context.containsBean("inMemoryRegisteredServices")) {
-            final List list = context.getBean("inMemoryRegisteredServices", List.class);
-            impl.setRegisteredServices(list);
+    @Bean
+    @RefreshScope
+    public ServiceRegistryDao serviceRegistryDao() {
+        LOGGER.warn("Runtime memory is used as the persistence storage for retrieving and persisting service definitions. "
+                + "Changes that are made to service definitions during runtime WILL be LOST upon container restarts.");
+
+        final List<RegisteredService> services = new ArrayList<>();
+        if (applicationContext.containsBean("inMemoryRegisteredServices")) {
+            services.addAll(applicationContext.getBean("inMemoryRegisteredServices", List.class));
         }
-        return impl;
+        return new InMemoryServiceRegistry(services);
     }
 
     @Autowired
@@ -140,13 +156,6 @@ public class CasCoreServicesConfiguration {
         } catch (final Exception e) {
             throw Throwables.propagate(e);
         }
-    }
-
-    @Bean
-    public List<ServiceFactory> serviceFactoryList() {
-        final List<ServiceFactory> list = new ArrayList<>();
-        list.add(webApplicationServiceFactory());
-        return list;
     }
 
     /**

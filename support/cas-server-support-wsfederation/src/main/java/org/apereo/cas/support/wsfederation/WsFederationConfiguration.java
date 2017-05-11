@@ -26,7 +26,7 @@ import java.util.stream.Collectors;
 public class WsFederationConfiguration implements Serializable {
     private static final long serialVersionUID = 2310859477512242659L;
 
-    private final transient Logger logger = LoggerFactory.getLogger(this.getClass());
+    private static final Logger LOGGER = LoggerFactory.getLogger(WsFederationConfiguration.class);
 
     /**
      * Describes how the WS-FED principal resolution machinery
@@ -177,7 +177,7 @@ public class WsFederationConfiguration implements Serializable {
     }
 
     private void createSigningWallet(final List<Resource> signingCertificateFiles) {
-        this.signingWallet = signingCertificateFiles.stream().map(this::getSigningCredential).collect(Collectors.toList());
+        this.signingWallet = signingCertificateFiles.stream().map(WsFederationConfiguration::getSigningCredential).collect(Collectors.toList());
     }
 
     /**
@@ -258,16 +258,16 @@ public class WsFederationConfiguration implements Serializable {
      * @param resource the signing certificate file
      * @return an X509 credential
      */
-    private Credential getSigningCredential(final Resource resource) {
+    private static Credential getSigningCredential(final Resource resource) {
         try(InputStream inputStream = resource.getInputStream()) {
             final CertificateFactory certificateFactory = CertificateFactory.getInstance("X.509");
             final X509Certificate certificate = (X509Certificate) certificateFactory.generateCertificate(inputStream);
             final Credential publicCredential = new BasicX509Credential(certificate);
-            logger.debug("getSigningCredential: key retrieved.");
+            LOGGER.debug("getSigningCredential: key retrieved.");
             return publicCredential;
         } catch (final Exception ex) {
-            logger.error(ex.getMessage(), ex);
-            return null;
+            LOGGER.error(ex.getMessage(), ex);
         }
+        return null;
     }
 }

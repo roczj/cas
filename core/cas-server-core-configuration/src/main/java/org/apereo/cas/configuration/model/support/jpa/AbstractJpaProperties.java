@@ -20,17 +20,19 @@ public abstract class AbstractJpaProperties {
     private String password = StringUtils.EMPTY;
     private String defaultCatalog;
     private String defaultSchema;
-    private String healthQuery = "SELECT 1 FROM INFORMATION_SCHEMA.SYSTEM_USERS";
-    private String idleTimeout = "PT5S";
+    private String healthQuery = StringUtils.EMPTY;
+    private String idleTimeout = "PT10M";
+    private String dataSourceName;
 
     private ConnectionPoolingProperties pool = new ConnectionPoolingProperties();
 
-    private int leakThreshold = 10;
+    private int leakThreshold = 3_000;
     private int batchSize = 1;
 
     private boolean failFast = true;
     private boolean isolateInternalQueries;
     private boolean autocommit;
+    private boolean dataSourceProxy;
 
     public String getDefaultCatalog() {
         return defaultCatalog;
@@ -158,5 +160,21 @@ public abstract class AbstractJpaProperties {
 
     public void setAutocommit(final boolean autocommit) {
         this.autocommit = autocommit;
+    }
+
+    public String getDataSourceName() {
+        return dataSourceName;
+    }
+
+    public void setDataSourceName(final String dataSourceName) {
+        this.dataSourceName = dataSourceName;
+    }
+
+    public boolean isDataSourceProxy() {
+        return dataSourceProxy;
+    }
+
+    public void setDataSourceProxy(final boolean dataSourceProxy) {
+        this.dataSourceProxy = dataSourceProxy;
     }
 }

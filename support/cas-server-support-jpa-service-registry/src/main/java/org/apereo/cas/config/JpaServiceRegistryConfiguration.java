@@ -20,9 +20,9 @@ import org.springframework.transaction.annotation.EnableTransactionManagement;
 import javax.persistence.EntityManagerFactory;
 import javax.sql.DataSource;
 
-import static org.apereo.cas.configuration.support.Beans.newEntityManagerFactoryBean;
+import static org.apereo.cas.configuration.support.Beans.newHibernateEntityManagerFactoryBean;
 import static org.apereo.cas.configuration.support.Beans.newHibernateJpaVendorAdapter;
-import static org.apereo.cas.configuration.support.Beans.newHickariDataSource;
+import static org.apereo.cas.configuration.support.Beans.newDataSource;
 
 /**
  * This this {@link JpaServiceRegistryConfiguration}.
@@ -57,7 +57,7 @@ public class JpaServiceRegistryConfiguration {
     @Lazy
     @Bean
     public LocalContainerEntityManagerFactoryBean serviceEntityManagerFactory() {
-        return newEntityManagerFactoryBean(
+        return newHibernateEntityManagerFactoryBean(
                 new JpaConfigDataHolder(
                         jpaServiceVendorAdapter(),
                         "jpaServiceRegistryContext",
@@ -78,11 +78,11 @@ public class JpaServiceRegistryConfiguration {
     @RefreshScope
     @Bean
     public DataSource dataSourceService() {
-        return newHickariDataSource(casProperties.getServiceRegistry().getJpa());
+        return newDataSource(casProperties.getServiceRegistry().getJpa());
     }
 
-    @Bean(name = {"jpaServiceRegistryDao", "serviceRegistryDao"})
-    public ServiceRegistryDao jpaServiceRegistryDao() {
+    @Bean
+    public ServiceRegistryDao serviceRegistryDao() {
         return new JpaServiceRegistryDaoImpl();
     }
 }

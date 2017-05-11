@@ -19,7 +19,7 @@ import java.time.LocalDate;
  * @since 5.0.0
  */
 @EnableTransactionManagement(proxyTargetClass = true)
-@Transactional(readOnly = false, transactionManager = "transactionManagerMfaAuthnTrust")
+@Transactional(transactionManager = "transactionManagerMfaAuthnTrust")
 public class MultifactorAuthenticationTrustStorageCleaner {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(MultifactorAuthenticationTrustStorageCleaner.class);
@@ -36,12 +36,12 @@ public class MultifactorAuthenticationTrustStorageCleaner {
     /**
      * Clean up expired records.
      */
-    @Scheduled(initialDelayString = "${cas.authn.mfa.trusted.cleaner.startDelay:10000}",
-               fixedDelayString = "${cas.authn.mfa.trusted.cleaner.repeatInterval:60000}")
+    @Scheduled(initialDelayString = "${cas.authn.mfa.trusted.cleaner.startDelay:PT10S}",
+               fixedDelayString = "${cas.authn.mfa.trusted.cleaner.repeatInterval:PT60S}")
     public void clean() {
 
         if (!trustedProperties.getCleaner().isEnabled()) {
-            LOGGER.debug("{} is disabled. Expired trusted authentication records will not automatically be cleaned up by CAS",
+            LOGGER.debug("[{}] is disabled. Expired trusted authentication records will not automatically be cleaned up by CAS",
                     getClass().getName());
             return;
         }
@@ -52,7 +52,7 @@ public class MultifactorAuthenticationTrustStorageCleaner {
             SpringBeanAutowiringSupport.processInjectionBasedOnCurrentContext(this);
             final LocalDate validDate = LocalDate.now().minus(trustedProperties.getExpiration(),
                     DateTimeUtils.toChronoUnit(trustedProperties.getTimeUnit()));
-            LOGGER.info("Expiring records that are on/before {}", validDate);
+            LOGGER.info("Expiring records that are on/before [{}]", validDate);
             this.storage.expire(validDate);
         } catch (final Exception e) {
             LOGGER.error(e.getMessage(), e);

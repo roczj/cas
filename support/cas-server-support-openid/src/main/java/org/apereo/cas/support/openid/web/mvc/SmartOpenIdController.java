@@ -69,17 +69,17 @@ public class SmartOpenIdController extends AbstractDelegateController implements
     protected ModelAndView handleRequestInternal(final HttpServletRequest request, final HttpServletResponse response) throws Exception {
         final Map<String, String> parameters = new HashMap<>();
         parameters.putAll(getAssociationResponse(request));
-        return new ModelAndView(this.successView, "parameters", parameters);
+        return new ModelAndView(this.successView, parameters);
     }
 
     @Override
     public boolean canHandle(final HttpServletRequest request, final HttpServletResponse response) {
         final String openIdMode = request.getParameter(OpenIdProtocolConstants.OPENID_MODE);
         if (StringUtils.equals(openIdMode, OpenIdProtocolConstants.ASSOCIATE)) {
-            LOGGER.info("Handling request. openid.mode : {}", openIdMode);
+            LOGGER.info("Handling request. openid.mode : [{}]", openIdMode);
             return true;
         }
-        LOGGER.info("Cannot handle request. openid.mode : {}", openIdMode);
+        LOGGER.info("Cannot handle request. openid.mode : [{}]", openIdMode);
         return false;
     }
 }

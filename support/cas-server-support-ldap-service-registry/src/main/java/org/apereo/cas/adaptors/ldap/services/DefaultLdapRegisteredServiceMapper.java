@@ -41,10 +41,10 @@ public class DefaultLdapRegisteredServiceMapper implements LdapRegisteredService
     public LdapEntry mapFromRegisteredService(final String dn, final RegisteredService svc) {
         try {
             if (svc.getId() == RegisteredService.INITIAL_IDENTIFIER_VALUE) {
-                ((AbstractRegisteredService) svc).setId(System.nanoTime());
+                ((AbstractRegisteredService) svc).setId(System.currentTimeMillis());
             }
             final String newDn = getDnForRegisteredService(dn, svc);
-            LOGGER.debug("Creating entry {}", newDn);
+            LOGGER.debug("Creating entry [{}]", newDn);
 
             
             final Collection<LdapAttribute> attrs = new ArrayList<>();

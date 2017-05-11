@@ -2,6 +2,8 @@ package org.apereo.cas.web.support;
 
 import org.apereo.cas.authentication.principal.ServiceFactory;
 import org.apereo.cas.authentication.principal.WebApplicationService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -16,13 +18,8 @@ import java.util.Objects;
  * @since 4.2
  */
 public class DefaultArgumentExtractor extends AbstractArgumentExtractor {
-
-    /**
-     * Default extractor.
-     */
-    public DefaultArgumentExtractor() {
-    }
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(DefaultArgumentExtractor.class);
+    
     /**
      * Instantiates a new argument extractor.
      *
@@ -46,12 +43,12 @@ public class DefaultArgumentExtractor extends AbstractArgumentExtractor {
         return getServiceFactories().stream().map(factory -> {
             final WebApplicationService service = factory.createService(request);
             if (service != null) {
-                logger.debug("Created {} based on {}", service, factory);
+                LOGGER.debug("Created [{}] based on [{}]", service, factory);
                 return service;
             }
             return null;
         }).filter(Objects::nonNull).findFirst().orElseGet(() -> {
-            logger.debug("No service could be extracted based on the given request");
+            LOGGER.debug("No service could be extracted based on the given request");
             return null;
         });
     }

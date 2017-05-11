@@ -8,22 +8,27 @@ import org.apereo.cas.authentication.AuthenticationSystemSupport;
 import org.apereo.cas.authentication.CoreAuthenticationTestUtils;
 import org.apereo.cas.authentication.Credential;
 import org.apereo.cas.authentication.OneTimePasswordCredential;
-import org.apereo.cas.authentication.RequiredHandlerAuthenticationPolicyFactory;
+import org.apereo.cas.authentication.policy.RequiredHandlerAuthenticationPolicyFactory;
 import org.apereo.cas.authentication.UsernamePasswordCredential;
-import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.principal.Service;
 import org.apereo.cas.config.CasCoreAuthenticationConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationHandlersConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationMetadataConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationPolicyConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationPrincipalConfiguration;
+import org.apereo.cas.config.CasCoreAuthenticationServiceSelectionStrategyConfiguration;
 import org.apereo.cas.config.CasCoreAuthenticationSupportConfiguration;
 import org.apereo.cas.config.CasCoreConfiguration;
 import org.apereo.cas.config.CasCoreHttpConfiguration;
 import org.apereo.cas.config.CasCoreServicesConfiguration;
+import org.apereo.cas.config.CasCoreTicketIdGeneratorsConfiguration;
 import org.apereo.cas.config.CasCoreTicketsConfiguration;
 import org.apereo.cas.config.CasCoreUtilConfiguration;
+import org.apereo.cas.config.CasDefaultServiceTicketIdGeneratorsConfiguration;
+import org.apereo.cas.config.CasMultifactorTestAuthenticationEventExecutionPlanConfiguration;
 import org.apereo.cas.config.CasPersonDirectoryConfiguration;
+import org.apereo.cas.config.CasCoreTicketCatalogConfiguration;
+import org.apereo.cas.config.support.CasWebApplicationServiceFactoryConfiguration;
 import org.apereo.cas.logout.config.CasCoreLogoutConfiguration;
 import org.apereo.cas.ticket.ServiceTicket;
 import org.apereo.cas.ticket.TicketGrantingTicket;
@@ -43,10 +48,6 @@ import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit4.SpringRunner;
 
-import javax.annotation.PostConstruct;
-import java.util.HashMap;
-import java.util.Map;
-
 import static org.junit.Assert.*;
 
 /**
@@ -59,8 +60,13 @@ import static org.junit.Assert.*;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(
-        classes = {CasCoreAuthenticationConfiguration.class,
+        classes = {
+                CasMultifactorTestAuthenticationEventExecutionPlanConfiguration.class,
+                CasWebApplicationServiceFactoryConfiguration.class,
+                CasDefaultServiceTicketIdGeneratorsConfiguration.class,
+                CasCoreAuthenticationConfiguration.class,
                 CasCoreServicesConfiguration.class,
+                CasCoreTicketCatalogConfiguration.class,
                 CasCoreAuthenticationPrincipalConfiguration.class,
                 CasCoreAuthenticationPolicyConfiguration.class,
                 CasCoreAuthenticationMetadataConfiguration.class,
@@ -71,9 +77,11 @@ import static org.junit.Assert.*;
                 CasCoreUtilConfiguration.class,
                 CasPersonDirectoryConfiguration.class,
                 CasCoreConfiguration.class,
+                CasCoreAuthenticationServiceSelectionStrategyConfiguration.class,
                 CasCoreLogoutConfiguration.class,
                 RefreshAutoConfiguration.class,
                 CasCoreTicketsConfiguration.class,
+                CasCoreTicketIdGeneratorsConfiguration.class,
                 CasCoreValidationConfiguration.class})
 @ContextConfiguration(locations = {"/mfa-test-context.xml"})
 @TestPropertySource(locations = {"classpath:/core.properties"}, properties = "cas.authn.policy.requiredHandlerAuthenticationPolicyEnabled=true")
@@ -81,14 +89,12 @@ public class MultifactorAuthenticationTests {
 
     private static final Service NORMAL_SERVICE = newService("https://example.com/normal/");
     private static final Service HIGH_SERVICE = newService("https://example.com/high/");
+    private static final String ALICE = "alice";
+    private static final String PASSWORD_31415 = "31415";
 
     @Rule
     public ExpectedException thrown = ExpectedException.none();
-
-    @Autowired
-    @Qualifier("authenticationHandlersResolvers")
-    private Map<AuthenticationHandler, PrincipalResolver> authenticationHandlersResolvers;
-
+    
     @Autowired(required = false)
     @Qualifier("defaultAuthenticationSystemSupport")
     private AuthenticationSystemSupport authenticationSystemSupport;
@@ -97,24 +103,11 @@ public class MultifactorAuthenticationTests {
     @Qualifier("centralAuthenticationService")
     private CentralAuthenticationService cas;
 
-    @PostConstruct
-    public void init() {
-        final HashMap<String, String> users = new HashMap<>();
-        users.put("alice", "alice");
-        users.put("bob", "bob");
-        users.put("mallory", "mallory");
-        authenticationHandlersResolvers.put(new AcceptUsersAuthenticationHandler(users), null);
-
-        final HashMap<String, String> credentials = new HashMap<>();
-        credentials.put("alice", "31415");
-        credentials.put("bob", "62831");
-        credentials.put("mallory", "14142");
-        authenticationHandlersResolvers.put(new TestOneTimePasswordAuthenticationHandler(credentials), null);
-    }
-
+    
+    
     @Test
     public void verifyAllowsAccessToNormalSecurityServiceWithPassword() throws Exception {
-        final AuthenticationResult ctx = processAuthenticationAttempt(NORMAL_SERVICE, newUserPassCredentials("alice", "alice"));
+        final AuthenticationResult ctx = processAuthenticationAttempt(NORMAL_SERVICE, newUserPassCredentials(ALICE, ALICE));
         final TicketGrantingTicket tgt = cas.createTicketGrantingTicket(ctx);
         assertNotNull(tgt);
         final ServiceTicket st = cas.grantServiceTicket(tgt.getId(), NORMAL_SERVICE, ctx);
@@ -123,7 +116,7 @@ public class MultifactorAuthenticationTests {
 
     @Test
     public void verifyAllowsAccessToNormalSecurityServiceWithOTP() throws Exception {
-        final AuthenticationResult ctx = processAuthenticationAttempt(NORMAL_SERVICE, new OneTimePasswordCredential("alice", "31415"));
+        final AuthenticationResult ctx = processAuthenticationAttempt(NORMAL_SERVICE, new OneTimePasswordCredential(ALICE, PASSWORD_31415));
         final TicketGrantingTicket tgt = cas.createTicketGrantingTicket(ctx);
         assertNotNull(tgt);
         final ServiceTicket st = cas.grantServiceTicket(tgt.getId(), NORMAL_SERVICE, ctx);
@@ -132,7 +125,7 @@ public class MultifactorAuthenticationTests {
 
     @Test
     public void verifyDeniesAccessToHighSecurityServiceWithPassword() throws Exception {
-        final AuthenticationResult ctx = processAuthenticationAttempt(HIGH_SERVICE, newUserPassCredentials("alice", "alice"));
+        final AuthenticationResult ctx = processAuthenticationAttempt(HIGH_SERVICE, newUserPassCredentials(ALICE, ALICE));
 
         this.thrown.expect(UnsatisfiedAuthenticationPolicyException.class);
 
@@ -144,7 +137,7 @@ public class MultifactorAuthenticationTests {
 
     @Test
     public void verifyDeniesAccessToHighSecurityServiceWithOTP() throws Exception {
-        final AuthenticationResult ctx = processAuthenticationAttempt(HIGH_SERVICE, new OneTimePasswordCredential("alice", "31415"));
+        final AuthenticationResult ctx = processAuthenticationAttempt(HIGH_SERVICE, new OneTimePasswordCredential(ALICE, PASSWORD_31415));
 
         final TicketGrantingTicket tgt = cas.createTicketGrantingTicket(ctx);
         assertNotNull(tgt);
@@ -158,8 +151,8 @@ public class MultifactorAuthenticationTests {
     @Test
     public void verifyAllowsAccessToHighSecurityServiceWithPasswordAndOTP() throws Exception {
         final AuthenticationResult ctx = processAuthenticationAttempt(HIGH_SERVICE,
-                newUserPassCredentials("alice", "alice"),
-                new OneTimePasswordCredential("alice", "31415"));
+                newUserPassCredentials(ALICE, ALICE),
+                new OneTimePasswordCredential(ALICE, PASSWORD_31415));
 
         final TicketGrantingTicket tgt = cas.createTicketGrantingTicket(ctx);
         assertNotNull(tgt);
@@ -170,8 +163,8 @@ public class MultifactorAuthenticationTests {
     @Test
     public void verifyAllowsAccessToHighSecurityServiceWithPasswordAndOTPViaRenew() throws Exception {
         // Note the original credential used to start SSO session does not satisfy security policy
-        final AuthenticationResult ctx2 = processAuthenticationAttempt(HIGH_SERVICE, newUserPassCredentials("alice", "alice"),
-                new OneTimePasswordCredential("alice", "31415"));
+        final AuthenticationResult ctx2 = processAuthenticationAttempt(HIGH_SERVICE, newUserPassCredentials(ALICE, ALICE),
+                new OneTimePasswordCredential(ALICE, PASSWORD_31415));
 
         final TicketGrantingTicket tgt = cas.createTicketGrantingTicket(ctx2);
         assertNotNull(tgt);

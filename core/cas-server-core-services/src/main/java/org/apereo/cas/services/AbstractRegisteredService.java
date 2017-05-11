@@ -43,7 +43,7 @@ import java.util.Set;
         columnDefinition = "VARCHAR(15) DEFAULT 'ant'")
 @Table(name = "RegexRegisteredService")
 @JsonTypeInfo(use = JsonTypeInfo.Id.CLASS, include = JsonTypeInfo.As.PROPERTY, property = "@class")
-public abstract class AbstractRegisteredService implements RegisteredService, Comparable<RegisteredService> {
+public abstract class AbstractRegisteredService implements RegisteredService {
 
     private static final long serialVersionUID = 7645279151115635245L;
 
@@ -59,58 +59,44 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
     @Column(length = 255, updatable = true, insertable = true, nullable = true)
     private String theme;
 
+    @Column(length = 255, updatable = true, insertable = true, nullable = true)
+    private String informationUrl;
+
+    @Column(length = 255, updatable = true, insertable = true, nullable = true)
+    private String privacyUrl;
+
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id = RegisteredService.INITIAL_IDENTIFIER_VALUE;
 
-    @Column(length = 255, updatable = true, insertable = true, nullable = false)
+    @Column(length = 255, updatable = true, insertable = true, nullable = true)
     private String description;
-
-    /**
-     * Proxy policy for the service.
-     * By default, the policy is {@link RefuseRegisteredServiceProxyPolicy}.
-     */
+    
     @Lob
     @Column(name = "proxy_policy", nullable = true, length = Integer.MAX_VALUE)
     private RegisteredServiceProxyPolicy proxyPolicy = new RefuseRegisteredServiceProxyPolicy();
 
     @Column(name = "evaluation_order", nullable = false)
     private int evaluationOrder;
-
-    /**
-     * Resolve the username for this service.
-     * By default the resolver is {@link DefaultRegisteredServiceUsernameProvider}.
-     */
+    
     @Lob
     @Column(name = "username_attr", nullable = true, length = Integer.MAX_VALUE)
     private RegisteredServiceUsernameAttributeProvider usernameAttributeProvider = new DefaultRegisteredServiceUsernameProvider();
-
-    /**
-     * The logout type of the service.
-     * The default logout type is the back channel one.
-     */
+    
     @Column(name = "logout_type", nullable = true)
     private LogoutType logoutType = LogoutType.BACK_CHANNEL;
 
     @Lob
     @Column(name = "required_handlers", length = Integer.MAX_VALUE)
     private HashSet<String> requiredHandlers = new HashSet<>();
-
-    /**
-     * The attribute filtering policy.
-     */
+    
     @Lob
     @Column(name = "attribute_release", nullable = true, length = Integer.MAX_VALUE)
-    private RegisteredServiceAttributeReleasePolicy attributeReleasePolicy =
-            new ReturnAllowedAttributeReleasePolicy();
-
-    /**
-     * The mfa policy.
-     */
+    private RegisteredServiceAttributeReleasePolicy attributeReleasePolicy = new ReturnAllowedAttributeReleasePolicy();
+    
     @Lob
     @Column(name = "mfa_policy", nullable = true, length = Integer.MAX_VALUE)
-    private RegisteredServiceMultifactorPolicy multifactorPolicy =
-            new DefaultRegisteredServiceMultifactorPolicy();
+    private RegisteredServiceMultifactorPolicy multifactorPolicy = new DefaultRegisteredServiceMultifactorPolicy();
 
     @Column(name = "logo")
     private URL logo;
@@ -133,6 +119,16 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
     @Override
     public long getId() {
         return this.id;
+    }
+
+    @Override
+    public String getInformationUrl() {
+        return this.informationUrl;
+    }
+
+    @Override
+    public String getPrivacyUrl() {
+        return this.privacyUrl;
     }
 
     @Override
@@ -239,6 +235,8 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
                 .append(this.proxyPolicy, that.proxyPolicy)
                 .append(this.properties, that.properties)
                 .append(this.multifactorPolicy, that.multifactorPolicy)
+                .append(this.informationUrl, that.informationUrl)
+                .append(this.privacyUrl, that.privacyUrl)
                 .isEquals();
     }
 
@@ -262,6 +260,8 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
                 .append(this.proxyPolicy)
                 .append(this.properties)
                 .append(this.multifactorPolicy)
+                .append(this.informationUrl)
+                .append(this.privacyUrl)
                 .toHashCode();
     }
 
@@ -315,6 +315,14 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
         this.logoutUrl = logoutUrl;
     }
 
+    public void setInformationUrl(final String informationUrl) {
+        this.informationUrl = informationUrl;
+    }
+
+    public void setPrivacyUrl(final String privacyUrl) {
+        this.privacyUrl = privacyUrl;
+    }
+
     /**
      * Sets the user attribute provider instance
      * when providing usernames to this registered service.
@@ -353,24 +361,25 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
      * @param source Source service from which to copy properties.
      */
     public void copyFrom(final RegisteredService source) {
-        this.setId(source.getId());
-        this.setProxyPolicy(source.getProxyPolicy());
-        this.setDescription(source.getDescription());
-        this.setName(source.getName());
-        this.setServiceId(source.getServiceId());
-        this.setTheme(source.getTheme());
-        this.setEvaluationOrder(source.getEvaluationOrder());
-        this.setUsernameAttributeProvider(source.getUsernameAttributeProvider());
-        this.setLogoutType(source.getLogoutType());
-        this.setAttributeReleasePolicy(source.getAttributeReleasePolicy());
-        this.setAccessStrategy(source.getAccessStrategy());
-        this.setLogo(source.getLogo());
-        this.setLogoutUrl(source.getLogoutUrl());
-        this.setPublicKey(source.getPublicKey());
-        this.setRequiredHandlers(source.getRequiredHandlers());
-        this.setProperties(source.getProperties());
-        this.setMultifactorPolicy(source.getMultifactorPolicy());
-
+        setId(source.getId());
+        setProxyPolicy(source.getProxyPolicy());
+        setDescription(source.getDescription());
+        setName(source.getName());
+        setServiceId(source.getServiceId());
+        setTheme(source.getTheme());
+        setEvaluationOrder(source.getEvaluationOrder());
+        setUsernameAttributeProvider(source.getUsernameAttributeProvider());
+        setLogoutType(source.getLogoutType());
+        setAttributeReleasePolicy(source.getAttributeReleasePolicy());
+        setAccessStrategy(source.getAccessStrategy());
+        setLogo(source.getLogo());
+        setLogoutUrl(source.getLogoutUrl());
+        setPublicKey(source.getPublicKey());
+        setRequiredHandlers(source.getRequiredHandlers());
+        setProperties(source.getProperties());
+        setMultifactorPolicy(source.getMultifactorPolicy());
+        setInformationUrl(source.getInformationUrl());
+        setPrivacyUrl(source.getPrivacyUrl());
     }
 
     /**
@@ -383,10 +392,10 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
     @Override
     public int compareTo(final RegisteredService other) {
         return new CompareToBuilder()
-                .append(this.getEvaluationOrder(), other.getEvaluationOrder())
-                .append(this.getName().toLowerCase(), other.getName().toLowerCase())
-                .append(this.getServiceId(), other.getServiceId())
-                .append(this.getId(), other.getId())
+                .append(getEvaluationOrder(), other.getEvaluationOrder())
+                .append(getName().toLowerCase(), other.getName().toLowerCase())
+                .append(getServiceId(), other.getServiceId())
+                .append(getId(), other.getId())
                 .toComparison();
     }
 
@@ -410,7 +419,8 @@ public abstract class AbstractRegisteredService implements RegisteredService, Co
         toStringBuilder.append("requiredHandlers", this.requiredHandlers);
         toStringBuilder.append("properties", this.properties);
         toStringBuilder.append("multifactorPolicy", this.multifactorPolicy);
-
+        toStringBuilder.append("informationUrl", this.informationUrl);
+        toStringBuilder.append("privacyUrl", this.privacyUrl);
         return toStringBuilder.toString();
     }
 

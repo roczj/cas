@@ -1,10 +1,12 @@
 package org.apereo.cas.config;
 
 import jcifs.spnego.Authentication;
+import org.apereo.cas.authentication.AuthenticationEventExecutionPlan;
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.principal.DefaultPrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalResolver;
+import org.apereo.cas.authentication.AuthenticationEventExecutionPlanConfigurer;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.ntlm.NtlmProperties;
 import org.apereo.cas.configuration.model.support.spnego.SpnegoProperties;
@@ -23,9 +25,6 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
-import java.util.Map;
-
 /**
  * This is {@link SpnegoConfiguration}.
  *
@@ -35,11 +34,7 @@ import java.util.Map;
 @Configuration("spnegoConfiguration")
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 public class SpnegoConfiguration {
-
-    @Autowired
-    @Qualifier("authenticationHandlersResolvers")
-    private Map<AuthenticationHandler, PrincipalResolver> authenticationHandlersResolvers;
-
+    
     @Autowired
     @Qualifier("servicesManager")
     private ServicesManager servicesManager;
@@ -85,14 +80,11 @@ public class SpnegoConfiguration {
     @RefreshScope
     public AuthenticationHandler spnegoHandler() {
         final SpnegoProperties spnegoProperties = casProperties.getAuthn().getSpnego();
-        final JcifsSpnegoAuthenticationHandler h = new JcifsSpnegoAuthenticationHandler(spnegoAuthentication(), spnegoProperties.isPrincipalWithDomainName(),
-                spnegoProperties.isNtlmAllowed());
-        h.setPrincipalFactory(spnegoPrincipalFactory());
-        h.setServicesManager(servicesManager);
+        final JcifsSpnegoAuthenticationHandler h = new JcifsSpnegoAuthenticationHandler(spnegoProperties.getName(), servicesManager, spnegoPrincipalFactory(),
+                spnegoAuthentication(), spnegoProperties.isPrincipalWithDomainName(), spnegoProperties.isNtlmAllowed());
         h.setAuthentication(spnegoAuthentication());
         h.setPrincipalWithDomainName(spnegoProperties.isPrincipalWithDomainName());
         h.setNTLMallowed(spnegoProperties.isNtlmAllowed());
-        h.setName(spnegoProperties.getName());
         return h;
     }
 
@@ -100,12 +92,8 @@ public class SpnegoConfiguration {
     @RefreshScope
     public AuthenticationHandler ntlmAuthenticationHandler() {
         final NtlmProperties ntlmProperties = casProperties.getAuthn().getNtlm();
-        final NtlmAuthenticationHandler ntlm = new NtlmAuthenticationHandler(ntlmProperties.isLoadBalance(), ntlmProperties.getDomainController(),
-                ntlmProperties.getIncludePattern());
-        ntlm.setPrincipalFactory(ntlmPrincipalFactory());
-        ntlm.setServicesManager(servicesManager);
-        ntlm.setName(ntlmProperties.getName());
-        return ntlm;
+        return new NtlmAuthenticationHandler(ntlmProperties.getName(), servicesManager, ntlmPrincipalFactory(), ntlmProperties.isLoadBalance(),
+                ntlmProperties.getDomainController(), ntlmProperties.getIncludePattern());
     }
 
     @ConditionalOnMissingBean(name = "ntlmPrincipalFactory")
@@ -132,9 +120,16 @@ public class SpnegoConfiguration {
     public PrincipalFactory spnegoPrincipalFactory() {
         return new DefaultPrincipalFactory();
     }
-    
-    @PostConstruct
-    protected void initializeRootApplicationContext() {
-        authenticationHandlersResolvers.put(spnegoHandler(), spnegoPrincipalResolver());
+
+    /**
+     * The type Spnego authentication event execution plan configuration.
+     */
+    @Configuration("spnegoAuthenticationEventExecutionPlanConfiguration")
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    public class SpnegoAuthenticationEventExecutionPlanConfiguration implements AuthenticationEventExecutionPlanConfigurer {
+        @Override
+        public void configureAuthenticationExecutionPlan(final AuthenticationEventExecutionPlan plan) {
+            plan.registerAuthenticationHandlerWithPrincipalResolver(spnegoHandler(), spnegoPrincipalResolver());
+        }
     }
 }

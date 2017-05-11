@@ -16,19 +16,18 @@ import org.springframework.webflow.execution.RequestContext;
 import javax.servlet.http.HttpServletRequest;
 
 /**
- * Implementation of the NonInteractiveCredentialsAction that looks for a remote
- * user that is set in the {@code HttpServletRequest} and attempts to
- * construct a Principal (and thus a PrincipalBearingCredential). If it doesn't
- * find one, this class returns and error event which tells the web flow it
- * could not find any credentials.
+ * Implementation of the {@link AbstractNonInteractiveCredentialsAction} that looks for a user
+ * principal that is set in the {@link HttpServletRequest} and attempts
+ * to construct a Principal (and thus a {@link PrincipalBearingCredential}). If it
+ * doesn't find one, this class returns and error event which tells the web flow
+ * it could not find any credentials.
  *
  * @author Scott Battaglia
  * @since 3.0.0
  */
 public class PrincipalFromRequestRemoteUserNonInteractiveCredentialsAction extends AbstractNonInteractiveCredentialsAction {
-
-    private final transient Logger logger = LoggerFactory.getLogger(this.getClass());
-
+    private static final Logger LOGGER = LoggerFactory.getLogger(PrincipalFromRequestRemoteUserNonInteractiveCredentialsAction.class);
+    
     private final PrincipalFactory principalFactory;
 
     public PrincipalFromRequestRemoteUserNonInteractiveCredentialsAction(
@@ -45,7 +44,7 @@ public class PrincipalFromRequestRemoteUserNonInteractiveCredentialsAction exten
         final String remoteUser = request.getRemoteUser();
 
         if (StringUtils.hasText(remoteUser)) {
-            logger.debug("Remote User [{}] found in HttpServletRequest", remoteUser);
+            LOGGER.debug("Remote User [{}] found in HttpServletRequest", remoteUser);
             return new PrincipalBearingCredential(this.principalFactory.createPrincipal(remoteUser));
         }
         return null;

@@ -1,19 +1,23 @@
 package org.apereo.cas.config;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apereo.cas.adaptors.radius.JRadiusServerImpl;
 import org.apereo.cas.adaptors.radius.RadiusClientFactory;
 import org.apereo.cas.adaptors.radius.RadiusProtocol;
 import org.apereo.cas.adaptors.radius.RadiusServer;
 import org.apereo.cas.adaptors.radius.authentication.handler.support.RadiusAuthenticationHandler;
+import org.apereo.cas.authentication.AuthenticationEventExecutionPlan;
 import org.apereo.cas.authentication.AuthenticationHandler;
 import org.apereo.cas.authentication.principal.DefaultPrincipalFactory;
 import org.apereo.cas.authentication.principal.PrincipalFactory;
-import org.apereo.cas.authentication.principal.PrincipalResolver;
 import org.apereo.cas.authentication.support.password.PasswordPolicyConfiguration;
+import org.apereo.cas.authentication.AuthenticationEventExecutionPlanConfigurer;
 import org.apereo.cas.configuration.CasConfigurationProperties;
 import org.apereo.cas.configuration.model.support.radius.RadiusProperties;
 import org.apereo.cas.configuration.support.Beans;
 import org.apereo.cas.services.ServicesManager;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
@@ -22,10 +26,8 @@ import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-import javax.annotation.PostConstruct;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 
 /**
  * This this {@link RadiusConfiguration}.
@@ -36,10 +38,7 @@ import java.util.Map;
 @Configuration("radiusConfiguration")
 @EnableConfigurationProperties(CasConfigurationProperties.class)
 public class RadiusConfiguration {
-
-    @Autowired
-    @Qualifier("authenticationHandlersResolvers")
-    private Map<AuthenticationHandler, PrincipalResolver> authenticationHandlersResolvers;
+    private static final Logger LOGGER = LoggerFactory.getLogger(RadiusConfiguration.class);
 
     @Autowired
     private CasConfigurationProperties casProperties;
@@ -94,8 +93,8 @@ public class RadiusConfiguration {
     @Bean
     public AuthenticationHandler radiusAuthenticationHandler() {
         final RadiusProperties radius = casProperties.getAuthn().getRadius();
-        final RadiusAuthenticationHandler h = new RadiusAuthenticationHandler(radiusServers(), radius.isFailoverOnException(),
-                radius.isFailoverOnAuthenticationFailure());
+        final RadiusAuthenticationHandler h = new RadiusAuthenticationHandler(radius.getName(), servicesManager, radiusPrincipalFactory(), radiusServers(),
+                radius.isFailoverOnException(), radius.isFailoverOnAuthenticationFailure());
 
         h.setPasswordEncoder(Beans.newPasswordEncoder(radius.getPasswordEncoder()));
         h.setPrincipalNameTransformer(Beans.newPrincipalNameTransformer(radius.getPrincipalTransformation()));
@@ -103,15 +102,22 @@ public class RadiusConfiguration {
         if (passwordPolicyConfiguration != null) {
             h.setPasswordPolicyConfiguration(passwordPolicyConfiguration);
         }
-
-        h.setPrincipalFactory(radiusPrincipalFactory());
-        h.setServicesManager(servicesManager);
-        h.setName(radius.getName());
         return h;
     }
 
-    @PostConstruct
-    protected void initializeRootApplicationContext() {
-        authenticationHandlersResolvers.put(radiusAuthenticationHandler(), null);
+    /**
+     * The type Radius authentication event execution plan configuration.
+     */
+    @Configuration("radiusAuthenticationEventExecutionPlanConfiguration")
+    @EnableConfigurationProperties(CasConfigurationProperties.class)
+    public class RadiusAuthenticationEventExecutionPlanConfiguration implements AuthenticationEventExecutionPlanConfigurer {
+        @Override
+        public void configureAuthenticationExecutionPlan(final AuthenticationEventExecutionPlan plan) {
+            if (StringUtils.isNotBlank(casProperties.getAuthn().getRadius().getClient().getInetAddress())) {
+                plan.registerAuthenticationHandler(radiusAuthenticationHandler());
+            } else {
+                LOGGER.warn("No RADIUS address is defined. RADIUS support will be disabled.");
+            }
+        }
     }
 }
